@@ -50,8 +50,8 @@ int main() {
 
         // Demande de l'action souhaitée
         printf("What is your request?\n 1. Get remaining places for a show.\n 2. Book places for a show.\n --> ");
-        fflush(stdout);                                        // FIX: forcer l'affichage avant scanf
-        scanf("%d", &requestNb);                              // FIX: pas de texte littéral dans scanf
+        fflush(stdout);
+        scanf("%d", &requestNb);
 
         // Requête de consultation
         if (requestNb == 1) { 
@@ -88,10 +88,10 @@ int main() {
             request.rtype = BOOK;
             request.showIdx = showIdx;
             request.nbPlace = nbPlace;
+            request.clientPid = pid;
 
             // Envoie de la requête
             msgsnd(msqid, &request, requestSize, 0);
-            request.clientPid = pid;
 
             // Réception et affichage de la réponse
             msgrcv(msqid, &response, responseSize, pid, 0);

@@ -87,10 +87,10 @@ int main() {
             request.mtype = BOOK_MTYPE;
             request.showIdx = showIdx;
             request.nbPlace = nbPlace;
+            request.clientPid = pid;
 
             // Envoie de la requête
             msgsnd(msqid, &request, requestSize, 0);
-            request.clientPid = pid;
 
             // Réception et affichage de la réponse
             msgrcv(msqid, &response, responseSize, pid, 0);
