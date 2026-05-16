@@ -7,6 +7,11 @@ enum RequestType {
     BOOK,
 };
 
+enum ResponseType {
+    SUCCESS,
+    ERROR,
+};
+
 typedef struct Request {
     long mtype;
     enum RequestType rtype;
@@ -18,9 +23,10 @@ typedef struct Request {
 
 typedef struct Response{
     long mtype;
+    enum ResponseType rtype;
     char message[1024];
 } Response;
 
 
 static long requestSize = sizeof(Request) - sizeof(long);
-static long ResponseSize = sizeof(Response) - sizeof(long);
+static long responseSize = sizeof(Response) - sizeof(long);

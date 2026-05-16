@@ -46,7 +46,7 @@ int main() {
             nbPlace = checkShow(showIdx);
             if (nbPlace == -1) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Invalid index %d, maximum index is %d.", showIdx, (int)NB_SHOWS);
+                    "ERROR: Invalid index %d, index should be between 1 and %d.\n", showIdx, (int)NB_SHOWS);
                 printf("Show index error, sending error message to client.\n");
             } else {
                 snprintf(msgBuffer, sizeof(msgBuffer), "%d", nbPlace);
@@ -63,11 +63,11 @@ int main() {
             int result = bookShow(showIdx, nbPlace);
             if (result == -1) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Invalid index %d, maximum index is %d.", showIdx + 1, (int)NB_SHOWS);
+                    "ERROR: Invalid index %d, index should be between 1 and %d.\n", showIdx, (int)NB_SHOWS);
                 printf("Show index error, sending error message to client.\n");
             } else if (result == -2) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Not enough remaining places. Remaining: %d, requested: %d.",
+                    "ERROR: Not enough remaining places. Remaining: %d, requested: %d.\n",
                     checkShow(showIdx), nbPlace);
                 printf("Not enough places error, sending error message to client.\n");
             } else {
