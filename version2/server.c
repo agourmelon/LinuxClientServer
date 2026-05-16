@@ -20,14 +20,14 @@ ShowBookingInfo BOOKABLE_SHOWS[] = {
 const size_t NB_SHOWS = sizeof(BOOKABLE_SHOWS) / sizeof(ShowBookingInfo);
 
 int bookShow(size_t index, unsigned int nbPlace) {
-    if (index >= NB_SHOWS) return -1;                          // FIX: >= au lieu de >
+    if (index >= NB_SHOWS) return -1;
     if (nbPlace > (unsigned int)BOOKABLE_SHOWS[index].remainingPlace) return -2;
-    BOOKABLE_SHOWS[index].remainingPlace -= nbPlace;           // FIX: modifie le tableau directement
+    BOOKABLE_SHOWS[index].remainingPlace -= nbPlace;
     return nbPlace;
 }
 
 int getShowRemainingPlaces(size_t index) {
-    if (index >= NB_SHOWS) return -1;                          // FIX: >= au lieu de >
+    if (index >= NB_SHOWS) return -1;
     return BOOKABLE_SHOWS[index].remainingPlace;
 }
 
@@ -46,87 +46,17 @@ int printShowIndexMap(char *buffer, size_t bufferSize) {
 }
 
 int main() {
-    char msgBuffer[1024];
-    char showIdxMap[NB_SHOWS * 64];
-    int fromClientTubeFd, toClientTubeFd;
-    mode_t mode = S_IRUSR | S_IWUSR;
-    int showIdx;
-    int nbPlace;
-
-    printf("Booking server is launched...\n");
-
-    mkfifo("client2server", mode);
-    mkfifo("server2client", mode);
-
-    printf("Opening client to server channel\n");
-    fromClientTubeFd = open("client2server", O_RDONLY);
-    printf("Opening server to client channel\n");
-    toClientTubeFd = open("server2client", O_WRONLY);
-
-    printShowIndexMap(showIdxMap, NB_SHOWS * 64);
-
-    printf("Sending the list of shows to client.\n");
-    write(toClientTubeFd, showIdxMap, NB_SHOWS * 64);
-
-    while (1) {
-
-        printf("Waiting for client request...\n");
-        memset(msgBuffer, 0, sizeof(msgBuffer));               // FIX: initialiser avant chaque read
-        read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1 );
-
-        if (strcmp(msgBuffer, "1") == 0) {                     // FIX: == 0 pour tester l'égalité
-            printf("Client request to see remaining place for a show.\n");
-            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1);
-
-            memset(msgBuffer, 0, sizeof(msgBuffer));
-            read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            sscanf(msgBuffer, "%d", &showIdx);
-            showIdx -= 1;                                      // FIX: l'utilisateur entre 1-4, l'index est 0-3
-            nbPlace = getShowRemainingPlaces(showIdx);
-            if (nbPlace == -1) {
-                snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Invalid index %d, maximum index is %d.", showIdx + 1, (int)NB_SHOWS);
-                printf("Show index error, sending error message to client.\n");
-            } else {
-                snprintf(msgBuffer, sizeof(msgBuffer), "%d", nbPlace); // FIX: snprintf plus sûr
-                printf("Request succeeded!\n");
-            }
-
-        } else if (strcmp(msgBuffer, "2") == 0) {             // FIX: == 0 pour tester l'égalité
-            printf("Client request to book places for a show.\n");
-            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1);
-
-            memset(msgBuffer, 0, sizeof(msgBuffer));
-            read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            sscanf(msgBuffer, "%d %d", &showIdx, &nbPlace);
-            showIdx -= 1;                                      // FIX: l'utilisateur entre 1-4, l'index est 0-3
-            int result = bookShow(showIdx, nbPlace);
-            if (result == -1) {
-                snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Invalid index %d, maximum index is %d.", showIdx + 1, (int)NB_SHOWS);
-                printf("Show index error, sending error message to client.\n");
-            } else if (result == -2) {
-                snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Not enough remaining places. Remaining: %d, requested: %d.",
-                    getShowRemainingPlaces(showIdx), nbPlace);
-                printf("Not enough places error, sending error message to client.\n");
-            } else {
-                snprintf(msgBuffer, sizeof(msgBuffer),
-                    "%d places booked for %s", result, BOOKABLE_SHOWS[showIdx].title);
-                printf("Request succeeded!\n");
-            }
-
-        } else {
-            printf("Unknown request: %s\n", msgBuffer);
-            snprintf(msgBuffer, sizeof(msgBuffer), "ERROR: Unknown request.");
-        }
-
-        write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1); // FIX: envoyer exactement ce qu'il faut
-
-    }
-
-    close(fromClientTubeFd);
-    close(toClientTubeFd);
+    //Initialisation des variables
+    
+    //Message de lancement du server.
+    //Céation de la file de messages.
+    //Boucle infine.
+    //Attente d'un messages.
+    //Si requete init: envoie message listes spectacles.
+    //Si spectacle n'existe pas: envoie erreur spectacle.
+    //Si requête de consultation: envoie message place restantes.
+    //Si requête de réservation: envoie message confirmation.
+    //Destruction de la file de message.
 
     return 0;
 }
