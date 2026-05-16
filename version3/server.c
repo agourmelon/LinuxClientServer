@@ -12,7 +12,7 @@
 #include <sys/sem.h>
 #include "message.h"
 #include "../booking.h"
-#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.15)
+#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.30)
 #define MSQKEY 17
 #define SEMKEY1 18
 #define SEMKEY2 19
@@ -46,6 +46,11 @@ void runBookingService(); // réservation de places pour un spectacle
 
 // flag pour la création des IPCs.
 mode_t ipcFlag = IPC_CREAT | IPC_EXCL | 0666;
+
+
+///////////////////////////////////////////////////////////////////////////////////
+//                                     MAIN                                      //
+///////////////////////////////////////////////////////////////////////////////////
 
 int main() {
     // Descripteur des threads de services
@@ -91,6 +96,10 @@ int main() {
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                    SIGNALS                                    //
+///////////////////////////////////////////////////////////////////////////////////
+
 void sigintHandler(int _){
     // Destruction de la file de message.
     msgctl(msqid, IPC_RMID, NULL);
@@ -99,6 +108,11 @@ void sigintHandler(int _){
     semctl(mutexNbCheckersId, 0, IPC_RMID, 0);
     exit(0);
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////
+//                               SYNCHRONISATION                                 //
+///////////////////////////////////////////////////////////////////////////////////
 
 void semopP(int semid, int showIdx) {
     struct sembuf operation;
@@ -146,6 +160,10 @@ int bookShowSync(int showIdx, int nbPlace) {
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                   SERVICES                                    //
+///////////////////////////////////////////////////////////////////////////////////
+
 void runInitService() {
     Response response;
     Request request;
@@ -157,7 +175,7 @@ void runInitService() {
     while(1){
         // Attente d'un messages.
         if (msgrcv(msqid, &request, requestSize, INIT_MTYPE, 0) == -1) {
-            fprintf(stderr, "msgrcv in init service");
+            fprintf(stderr, "msgrcv in init service\n");
             exit(1);
         } 
 
@@ -174,7 +192,7 @@ void runInitService() {
 
         // Envoie du message
         if (msgsnd(msqid, &response, responseSize, 0) == -1) {
-            fprintf(stderr, "msgsnd in init service");
+            fprintf(stderr, "msgsnd in init service\n");
             exit(1);
         }
     }
@@ -189,7 +207,7 @@ void runCheckingService(){
     while(1){
         // Attente d'un messages.
         if (msgrcv(msqid, &request, requestSize, CHECK_MTYPE, 0) == -1) { 
-            fprintf(stderr, "msgrcv in checking service");
+            fprintf(stderr, "msgrcv in checking service\n");
             exit(1);
         }
         printf("Client %d request to see remaining place for a show.\n", request.clientPid);
@@ -217,7 +235,7 @@ void runCheckingService(){
         response.mtype = request.clientPid;
         // Envoie du message
         if (msgsnd(msqid, &response, responseSize, 0) == -1) {
-            fprintf(stderr, "msgsnd in checking service");
+            fprintf(stderr, "msgsnd in checking service\n");
             exit(1);
         }
     }
@@ -232,7 +250,7 @@ void runBookingService(){
     while(1){
         // Attente d'un messages.
         if (msgrcv(msqid, &request, requestSize, BOOK_MTYPE, 0) == -1) { 
-            fprintf(stderr, "msgrcv in booking service");
+            fprintf(stderr, "msgrcv in booking service\n");
             exit(1);
         } 
         printf("Client %d request to book places for a show.\n", request.clientPid);
@@ -266,7 +284,7 @@ void runBookingService(){
         response.mtype = request.clientPid;
         // Envoie du message
         if (msgsnd(msqid, &response, responseSize, 0) == -1) {
-            fprintf(stderr, "msgsnd in booking service");
+            fprintf(stderr, "msgsnd in booking service\n");
             exit(1);
         }
     }
