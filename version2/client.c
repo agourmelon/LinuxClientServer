@@ -73,7 +73,7 @@ int main() {
             // Réception et affichage de la réponse
             msgrcv(msqid, &response, responseSize, pid, 0);
             if (response.rtype == SUCCESS)
-            printf("Remaining places: %s\n", response.message);
+            printf("Remaining places: %s\n\n", response.message);
             else printf("%s", response.message);
 
         } else if (requestNb == 2) {
@@ -96,11 +96,11 @@ int main() {
             // Réception et affichage de la réponse
             msgrcv(msqid, &response, responseSize, pid, 0);
             if (response.rtype == SUCCESS)
-            printf("Server response: %s\n", response.message);
+            printf("Server response: %s\n\n", response.message);
             else printf("%s", response.message);
 
         } else {
-            printf("Unknown request: %d\n", requestNb);
+            printf("Unknown request: %d\n\n", requestNb);
         }
 
     }

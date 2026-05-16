@@ -48,7 +48,7 @@ int main() {
             // Réception et affichage de la réponse
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            printf("Remaining places: %s\n", msgBuffer);
+            printf("Remaining places: %s\n\n", msgBuffer);
 
         } else if (requestNb == 2) {
             // Envoi de la requête "2" au serveur
@@ -69,10 +69,10 @@ int main() {
             // Réception et affichage de la réponse
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            printf("Server response: %s\n", msgBuffer);
+            printf("Server response: %s\n\n", msgBuffer);
 
         } else {
-            printf("Unknown request: %d\n", requestNb);
+            printf("Unknown request: %d\n\n", requestNb);
         }
 
     }
