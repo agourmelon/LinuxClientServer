@@ -17,7 +17,7 @@ int main() {
     fromServerTubeFd = open("server2client", O_RDONLY);
 
     // Réception de la liste des spectacles
-    memset(showIdxMap, 0, sizeof(showIdxMap));             // FIX: initialiser avant read
+    memset(showIdxMap, 0, sizeof(showIdxMap));
     read(fromServerTubeFd, showIdxMap, sizeof(showIdxMap) - 1);
 
     while (1) {
@@ -26,8 +26,8 @@ int main() {
 
         // Demande de l'action souhaitée
         printf("What is your request?\n 1. Get remaining places for a show.\n 2. Book places for a show.\n --> ");
-        fflush(stdout);                                        // FIX: forcer l'affichage avant scanf
-        scanf("%d", &requestNb);                              // FIX: pas de texte littéral dans scanf
+        fflush(stdout);
+        scanf("%d", &requestNb);
 
         if (requestNb == 1) {
             // Envoi de la requête "1" au serveur
@@ -46,7 +46,7 @@ int main() {
             write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
 
             // Réception et affichage de la réponse
-            memset(msgBuffer, 0, sizeof(msgBuffer));           // FIX: initialiser avant read
+            memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
             printf("Remaining places: %s\n", msgBuffer);
 
@@ -67,7 +67,7 @@ int main() {
             write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
 
             // Réception et affichage de la réponse
-            memset(msgBuffer, 0, sizeof(msgBuffer));           // FIX: initialiser avant read
+            memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
             printf("Server response: %s\n", msgBuffer);
 

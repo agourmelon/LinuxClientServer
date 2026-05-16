@@ -7,49 +7,9 @@
 #include <sys/ipc.h>
 #include <sys/stat.h>
 #include "message.h"
+#include "../booking.h"
 #define MSQKEY 17
 
-typedef struct {
-    const char* title;
-    int remainingPlace;
-} ShowBookingInfo;
-
-ShowBookingInfo BOOKABLE_SHOWS[] = {
-    {"Mamma Mia", 100},
-    {"The Cid", 100},
-    {"West Side Story", 100},
-    {"Hamlett", 100}
-};
-
-const size_t NB_SHOWS = sizeof(BOOKABLE_SHOWS) / sizeof(ShowBookingInfo);
-
-int bookShow(size_t index, unsigned int nbPlace) {
-    index--;
-    if (index >= NB_SHOWS) return -1;
-    if (nbPlace > (unsigned int)BOOKABLE_SHOWS[index].remainingPlace) return -2;
-    BOOKABLE_SHOWS[index].remainingPlace -= nbPlace;
-    return nbPlace;
-}
-
-int getShowRemainingPlaces(size_t index) {
-    index--;
-    if (index >= NB_SHOWS) return -1;
-    return BOOKABLE_SHOWS[index].remainingPlace;
-}
-
-int printShowIndexMap(char *buffer, size_t bufferSize) {
-    int position = 0;
-    for (int i = 0; i < (int)NB_SHOWS; i++) {
-        ShowBookingInfo show = BOOKABLE_SHOWS[i];
-        position += snprintf(
-            buffer + position,
-            bufferSize - position,
-            "%d. %-20s\n",
-            i + 1, show.title);
-        if (position >= (int)bufferSize) return -1;
-    }
-    return position;
-}
 
 int main() {
     // Initialisation des variables
@@ -89,7 +49,7 @@ int main() {
         else if (request.rtype == CHECK) {
             printf("Client %d request to see remaining place for a show.\n", request.clientPid);
             // Récupération du nombre de place.
-            nbPlace = getShowRemainingPlaces(request.showIdx);
+            nbPlace = checkShow(request.showIdx);
             if (nbPlace==-1) { // Si spectacle n'existe pas (indice trop grand):
                 // Préparation du message d'erreur
                 snprintf(response.message, sizeof(response.message),
@@ -116,12 +76,12 @@ int main() {
                 // Préparation du message d'erreur
                 snprintf(response.message, sizeof(response.message),
                     "ERROR: Not enough remaining places. Remaining: %d, requested: %d.",
-                    getShowRemainingPlaces(showIdx), nbPlace);
+                    checkShow(showIdx), nbPlace);
                 printf("Not enough places error, sending error message to client.\n");
             } else { // Le spectacle existe et le nombre de places est suffisant
                 // Préparation du message de confirmation.
                 snprintf(response.message, sizeof(response.message),
-                    "%d places booked for %s", result, BOOKABLE_SHOWS[showIdx].title);
+                    "%d places booked for %s", result, SHOWS[showIdx-1].title);
                 printf("Request of Client %d succeeded!\n", request.clientPid);
             }
         }

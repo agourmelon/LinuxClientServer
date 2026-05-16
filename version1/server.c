@@ -4,48 +4,8 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "../booking.h"
 
-typedef struct {
-    const char* title;
-    int remainingPlace;
-} ShowBookingInfo;
-
-ShowBookingInfo BOOKABLE_SHOWS[] = {
-    {"Mamma Mia", 100},
-    {"The Cid", 100},
-    {"West Side Story", 100},
-    {"Hamlett", 100}
-};
-
-const size_t NB_SHOWS = sizeof(BOOKABLE_SHOWS) / sizeof(ShowBookingInfo);
-
-int bookShow(size_t index, unsigned int nbPlace) {
-    index--;
-    if (index >= NB_SHOWS) return -1;
-    if (nbPlace > (unsigned int)BOOKABLE_SHOWS[index].remainingPlace) return -2;
-    BOOKABLE_SHOWS[index].remainingPlace -= nbPlace;
-    return nbPlace;
-}
-
-int getShowRemainingPlaces(size_t index) {
-    index--;
-    if (index >= NB_SHOWS) return -1;
-    return BOOKABLE_SHOWS[index].remainingPlace;
-}
-
-int printShowIndexMap(char *buffer, size_t bufferSize) {
-    int position = 0;
-    for (int i = 0; i < (int)NB_SHOWS; i++) {
-        ShowBookingInfo show = BOOKABLE_SHOWS[i];
-        position += snprintf(
-            buffer + position,
-            bufferSize - position,
-            "%d. %-20s\n",
-            i + 1, show.title);
-        if (position >= (int)bufferSize) return -1;
-    }
-    return position;
-}
 
 int main() {
     char msgBuffer[1024];
@@ -83,7 +43,7 @@ int main() {
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
             sscanf(msgBuffer, "%d", &showIdx);
-            nbPlace = getShowRemainingPlaces(showIdx);
+            nbPlace = checkShow(showIdx);
             if (nbPlace == -1) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
                     "ERROR: Invalid index %d, maximum index is %d.", showIdx, (int)NB_SHOWS);
@@ -108,11 +68,11 @@ int main() {
             } else if (result == -2) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
                     "ERROR: Not enough remaining places. Remaining: %d, requested: %d.",
-                    getShowRemainingPlaces(showIdx), nbPlace);
+                    checkShow(showIdx), nbPlace);
                 printf("Not enough places error, sending error message to client.\n");
             } else {
                 snprintf(msgBuffer, sizeof(msgBuffer),
-                    "%d places booked for %s", result, BOOKABLE_SHOWS[showIdx].title);
+                    "%d places booked for %s", result, SHOWS[showIdx-1].title);
                 printf("Request succeeded!\n");
             }
 
