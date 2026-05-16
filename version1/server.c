@@ -20,6 +20,7 @@ ShowBookingInfo BOOKABLE_SHOWS[] = {
 const size_t NB_SHOWS = sizeof(BOOKABLE_SHOWS) / sizeof(ShowBookingInfo);
 
 int bookShow(size_t index, unsigned int nbPlace) {
+    index--;
     if (index >= NB_SHOWS) return -1;
     if (nbPlace > (unsigned int)BOOKABLE_SHOWS[index].remainingPlace) return -2;
     BOOKABLE_SHOWS[index].remainingPlace -= nbPlace;
@@ -27,6 +28,7 @@ int bookShow(size_t index, unsigned int nbPlace) {
 }
 
 int getShowRemainingPlaces(size_t index) {
+    index--;
     if (index >= NB_SHOWS) return -1;
     return BOOKABLE_SHOWS[index].remainingPlace;
 }
@@ -81,11 +83,10 @@ int main() {
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
             sscanf(msgBuffer, "%d", &showIdx);
-            showIdx -= 1;
             nbPlace = getShowRemainingPlaces(showIdx);
             if (nbPlace == -1) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
-                    "ERROR: Invalid index %d, maximum index is %d.", showIdx + 1, (int)NB_SHOWS);
+                    "ERROR: Invalid index %d, maximum index is %d.", showIdx, (int)NB_SHOWS);
                 printf("Show index error, sending error message to client.\n");
             } else {
                 snprintf(msgBuffer, sizeof(msgBuffer), "%d", nbPlace);
@@ -99,7 +100,6 @@ int main() {
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
             sscanf(msgBuffer, "%d %d", &showIdx, &nbPlace);
-            showIdx -= 1;
             int result = bookShow(showIdx, nbPlace);
             if (result == -1) {
                 snprintf(msgBuffer, sizeof(msgBuffer),
