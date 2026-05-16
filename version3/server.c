@@ -12,6 +12,7 @@
 #include <sys/sem.h>
 #include "message.h"
 #include "../booking.h"
+#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.15)
 #define MSQKEY 17
 #define SEMKEY1 18
 #define SEMKEY2 19
@@ -25,8 +26,11 @@ int msqid;
 // sur le tableau des spectacles: architecture lecteurs/écrivains.
 int mutexNbCheckersId, mutexBookId;
 
-// Nombre de lecteurs.
-int nbCheckers;
+// Nombre de lecteurs pour chaque spectacles
+int nbCheckers[NB_SHOWS];
+    
+// Tampon global pour l'affichage de la liste des spectacles.
+static char showIdxMap[1024];
 
 // Operations sur semaphore d'indice showIdx de l'ensemble semid.
 void semopV(int semid, int showIdx); // Operation V
@@ -40,11 +44,15 @@ void runInitService(); // initialisation: affichage listes spectacles
 void runCheckingService(); // consultation du nombre de places
 void runBookingService(); // réservation de places pour un spectacle
 
+// flag pour la création des IPCs.
+mode_t ipcFlag = IPC_CREAT | IPC_EXCL | 0666;
 
 int main() {
-    // Initialisation des variables
+    // Descripteur des threads de services
     pthread_t threadInit, threadCheck, threadBook;
-    mode_t ipcFlag = IPC_CREAT | IPC_EXCL | 0666;
+
+    // initialisation des nombres de lecteurs à 0.
+    memset(nbCheckers, 0, NB_SHOWS * sizeof(int));
     
     // Message de lancement du server.
     printf("Booking server is launched...\n");
@@ -56,9 +64,12 @@ int main() {
     // Création des mutexes: 1 de chaques par entrée du tableau (NB_SHOWS)
     mutexNbCheckersId = semget(SEMKEY1, NB_SHOWS, ipcFlag);
     mutexBookId = semget(SEMKEY2, NB_SHOWS, ipcFlag);
+
     // Initialisation des mutexes (max nb_token = 1)
-    semctl(mutexNbCheckersId, 0, SETALL, 1);
-    semctl(mutexBookId, 0, SETALL, 1);
+    unsigned short vals[NB_SHOWS];
+    for (long unsigned int i = 0; i < NB_SHOWS; i++) vals[i] = 1;
+    semctl(mutexNbCheckersId, 0, SETALL, vals);
+    semctl(mutexBookId, 0, SETALL, vals);
 
     // On redéfinit l'action du sigint: détruire proprement la file de message
     signal(SIGINT, sigintHandler);
@@ -107,19 +118,27 @@ void semopV(int semid, int showIdx) {
 
 
 int checkShowSync(int showIdx) {
+    // Validation de showIdx
+    if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
+
     semopP(mutexNbCheckersId, showIdx);
-    nbCheckers++;
-    if (nbCheckers == 1) semopP(mutexBookId, showIdx);
+    nbCheckers[showIdx-1]++;
+    if (nbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx);
     semopV(mutexNbCheckersId, showIdx);
+
     int nbPlace = checkShow(showIdx);
+
     semopP(mutexNbCheckersId, showIdx);
-    nbCheckers--;
-    if (nbCheckers == 0) semopV(mutexBookId, showIdx);
+    nbCheckers[showIdx-1]--;
+    if (nbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx);
     semopV(mutexNbCheckersId, showIdx);
     return nbPlace;
 }
 
 int bookShowSync(int showIdx, int nbPlace) {
+    // Validation de showIdx
+    if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
+
     semopP(mutexBookId, showIdx);
     int result = bookShow(showIdx, nbPlace);
     semopV(mutexBookId, showIdx);
@@ -130,7 +149,6 @@ int bookShowSync(int showIdx, int nbPlace) {
 void runInitService() {
     Response response;
     Request request;
-    char showIdxMap[1024];
 
     printf("Launching Init service...\n");
 
@@ -138,7 +156,10 @@ void runInitService() {
     printShowIndexMap(showIdxMap, 1024);
     while(1){
         // Attente d'un messages.
-        msgrcv(msqid, &request, requestSize, INIT_MTYPE, 0); 
+        if (msgrcv(msqid, &request, requestSize, INIT_MTYPE, 0) == -1) {
+            fprintf(stderr, "msgrcv in init service");
+            exit(1);
+        } 
 
         // Nettoyage du buffer de réponse
         memset(response.message, 0, sizeof(response.message));
@@ -150,8 +171,12 @@ void runInitService() {
 
         // On récupère le pid du client de sa requête pour indiquer le destinataire
         response.mtype = request.clientPid;
+
         // Envoie du message
-        msgsnd(msqid, &response, responseSize, 0);
+        if (msgsnd(msqid, &response, responseSize, 0) == -1) {
+            fprintf(stderr, "msgsnd in init service");
+            exit(1);
+        }
     }
 }
 
@@ -163,7 +188,10 @@ void runCheckingService(){
     printf("Launching checking service...\n");
     while(1){
         // Attente d'un messages.
-        msgrcv(msqid, &request, requestSize, CHECK_MTYPE, 0); 
+        if (msgrcv(msqid, &request, requestSize, CHECK_MTYPE, 0) == -1) { 
+            fprintf(stderr, "msgrcv in checking service");
+            exit(1);
+        }
         printf("Client %d request to see remaining place for a show.\n", request.clientPid);
 
         // Récupération du nombre de place.
@@ -175,7 +203,7 @@ void runCheckingService(){
         if (nbPlace==-1) { // Si spectacle n'existe pas (indice trop grand):
             // Préparation du message d'erreur
             snprintf(response.message, sizeof(response.message),
-                "ERROR: Invalid index %d, index should be between 1 and %d.\n", request.showIdx, (int)NB_SHOWS);
+                "ERROR: Invalid index %d, index should be between 1 and %lu.\n", request.showIdx, NB_SHOWS);
             response.rtype = ERROR;
             printf("Show index error, sending error message to client.\n");
         }
@@ -188,7 +216,10 @@ void runCheckingService(){
         // On récupère le pid du client de sa requête pour indiquer le destinataire
         response.mtype = request.clientPid;
         // Envoie du message
-        msgsnd(msqid, &response, responseSize, 0);
+        if (msgsnd(msqid, &response, responseSize, 0) == -1) {
+            fprintf(stderr, "msgsnd in checking service");
+            exit(1);
+        }
     }
 }
 
@@ -200,7 +231,10 @@ void runBookingService(){
     printf("Launching booking service...\n");
     while(1){
         // Attente d'un messages.
-        msgrcv(msqid, &request, requestSize, BOOK_MTYPE, 0); 
+        if (msgrcv(msqid, &request, requestSize, BOOK_MTYPE, 0) == -1) { 
+            fprintf(stderr, "msgrcv in booking service");
+            exit(1);
+        } 
         printf("Client %d request to book places for a show.\n", request.clientPid);
 
         // Appel à la fonction de réservation.
@@ -211,7 +245,7 @@ void runBookingService(){
         if (result==-1) { // Si indice du spectacle n'existe pas:
             // Préparation du message d'erreur
             snprintf(response.message, sizeof(response.message),
-                "ERROR: Invalid index %d, index should be between 1 and %d.\n", request.showIdx, (int)NB_SHOWS);
+                "ERROR: Invalid index %d, index should be between 1 and %lu.\n", request.showIdx, NB_SHOWS);
             response.rtype = ERROR;
             printf("Show index error, sending error message to client.\n");
         } else if (result==-2) { // Si pas assez de places disponibles:
@@ -231,6 +265,9 @@ void runBookingService(){
         // On récupère le pid du client de sa requête pour indiquer le destinataire
         response.mtype = request.clientPid;
         // Envoie du message
-        msgsnd(msqid, &response, responseSize, 0);
+        if (msgsnd(msqid, &response, responseSize, 0) == -1) {
+            fprintf(stderr, "msgsnd in booking service");
+            exit(1);
+        }
     }
 }
