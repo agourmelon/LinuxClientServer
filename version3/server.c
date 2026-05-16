@@ -1,15 +1,6 @@
-#include <stdlib.h>
 #include <pthread.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/msg.h>
-#include <sys/ipc.h>
-#include <sys/stat.h>
 #include <signal.h>
 #include "service.h"
-#include "../booking.h"
 #define MSQKEY 17
 
 // Signal handler pour sigint
