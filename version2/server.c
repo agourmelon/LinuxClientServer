@@ -16,7 +16,7 @@
 int msqid;
 
 // Signal handler pour sigint
-void sigintHandler(int){
+void sigintHandler(int _){
     //Destruction de la file de message.
     msgctl(msqid, IPC_RMID, NULL);
     exit(0);
