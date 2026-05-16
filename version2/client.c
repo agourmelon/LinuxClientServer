@@ -1,83 +1,109 @@
 #include <string.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "message.h"
+#define MSQKEY 17
+#define SERVER_MTYPE 1
 
 int main() {
-    char msgBuffer[1024];
+    // Initialisation des variables
+    int msqid;
+    int showIdx, nbPlace;
+    Request request;
+    Response response;
     char showIdxMap[1024];
-    int fromServerTubeFd, toServerTubeFd;
     int requestNb;
-    int showIdx;
-    int nbPlace;
+    pid_t pid = getpid();
 
-    toServerTubeFd = open("client2server", O_WRONLY);
-    fromServerTubeFd = open("server2client", O_RDONLY);
+    printf("Client %d is launched...\n", pid);
 
-    // Réception de la liste des spectacles
-    memset(showIdxMap, 0, sizeof(showIdxMap));             // FIX: initialiser avant read
-    read(fromServerTubeFd, showIdxMap, sizeof(showIdxMap) - 1);
+    // Récupération de la file de message
+    msqid = msgget(MSQKEY, 0);
+
+    // Requête initiale: récupération de la liste des spectacles
+        // Préparation du message
+    request.mtype = SERVER_MTYPE;
+    request.rtype = INIT;
+    request.clientPid = pid;
+        // On ignore les champs showIdx et nbPlace: inutile dans cette requête
+        // Envoie de la requête
+    msgsnd(msqid, &request, requestSize, 0);
+    printf("Requesting list of shows.\n");
+        // Nettoyage du buffer de réponse
+    memset(response.message, 0, sizeof(response.message));
+        // Attente de la réponse
+    msgrcv(msqid, &response, responseSize, pid, 0);
+        // Sauvegarde de la liste dans la variable local showIdxMap
+    snprintf(showIdxMap, sizeof(showIdxMap), "%s", response.message);
 
     while (1) {
         printf("Here is the list of available shows.\n");
         printf("%s\n", showIdxMap);
+
+        // Nettoyage du buffer de réponse
+        memset(response.message, 0, sizeof(response.message));
 
         // Demande de l'action souhaitée
         printf("What is your request?\n 1. Get remaining places for a show.\n 2. Book places for a show.\n --> ");
         fflush(stdout);                                        // FIX: forcer l'affichage avant scanf
         scanf("%d", &requestNb);                              // FIX: pas de texte littéral dans scanf
 
-        if (requestNb == 1) {
-            // Envoi de la requête "1" au serveur
-            snprintf(msgBuffer, sizeof(msgBuffer), "1");
-            write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
+        // Requête de consultation
+        if (requestNb == 1) { 
 
-            // Attente de l'acquittement du serveur
-            memset(msgBuffer, 0, sizeof(msgBuffer));
-            read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-
-            // Envoi de l'index du spectacle
+            // Choix du spectacle (via son indice)
             printf("Enter show index to see remaining places: ");
             fflush(stdout);
             scanf("%d", &showIdx);
-            snprintf(msgBuffer, sizeof(msgBuffer), "%d", showIdx);
-            write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
+
+            // Préparation de la requête (Champs nécessaires)
+            request.mtype = SERVER_MTYPE;
+            request.rtype = CHECK;
+            request.showIdx = showIdx;
+            request.clientPid = pid;
+
+            // Envoie de la requête
+            msgsnd(msqid, &request, requestSize, 0);
 
             // Réception et affichage de la réponse
-            memset(msgBuffer, 0, sizeof(msgBuffer));           // FIX: initialiser avant read
-            read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            printf("Remaining places: %s\n", msgBuffer);
+            msgrcv(msqid, &response, responseSize, pid, 0);
+            if (response.rtype == SUCCESS)
+            printf("Remaining places: %s\n", response.message);
+            else printf("%s", response.message);
 
         } else if (requestNb == 2) {
-            // Envoi de la requête "2" au serveur
-            snprintf(msgBuffer, sizeof(msgBuffer), "2");
-            write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
 
-            // Attente de l'acquittement du serveur
-            memset(msgBuffer, 0, sizeof(msgBuffer));
-            read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-
-            // Envoi de l'index et du nombre de places
+            // Choix du spectacle et du nombre de places
             printf("Enter show index and number of places to book (ex: 1 5): ");
             fflush(stdout);
             scanf("%d %d", &showIdx, &nbPlace);
-            snprintf(msgBuffer, sizeof(msgBuffer), "%d %d", showIdx, nbPlace);
-            write(toServerTubeFd, msgBuffer, strlen(msgBuffer) + 1);
+
+            // Préparation de la requête
+            request.mtype = SERVER_MTYPE;
+            request.rtype = BOOK;
+            request.showIdx = showIdx;
+            request.nbPlace = nbPlace;
+
+            // Envoie de la requête
+            msgsnd(msqid, &request, requestSize, 0);
+            request.clientPid = pid;
 
             // Réception et affichage de la réponse
-            memset(msgBuffer, 0, sizeof(msgBuffer));           // FIX: initialiser avant read
-            read(fromServerTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
-            printf("Server response: %s\n", msgBuffer);
+            msgrcv(msqid, &response, responseSize, pid, 0);
+            if (response.rtype == SUCCESS)
+            printf("Server response: %s\n", response.message);
+            else printf("%s", response.message);
 
         } else {
             printf("Unknown request: %d\n", requestNb);
         }
 
     }
-    close(fromServerTubeFd);
-    close(toServerTubeFd);
 
     return 0;
 }

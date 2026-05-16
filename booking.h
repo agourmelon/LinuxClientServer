@@ -18,7 +18,7 @@ static ShowBookingInfo SHOWS[] = {
 const size_t NB_SHOWS = sizeof(SHOWS) / sizeof(ShowBookingInfo);
 
 static int bookShow(size_t index, unsigned int nbPlace) {
-    index--;
+    index-=1;
     if (index >= NB_SHOWS) return -1;
     if (nbPlace > (unsigned int)SHOWS[index].remainingPlace) return -2;
     SHOWS[index].remainingPlace -= nbPlace;
@@ -26,7 +26,7 @@ static int bookShow(size_t index, unsigned int nbPlace) {
 }
 
 static int checkShow(size_t index) {
-    index--;
+    index-=1;
     if (index >= NB_SHOWS) return -1;
     return SHOWS[index].remainingPlace;
 }
