@@ -9,20 +9,33 @@
 #include <sys/ipc.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <sys/sem.h>
 #include "message.h"
 #include "../booking.h"
 #define MSQKEY 17
+#define SEMKEY1 18
+#define SEMKEY2 19
 #define INIT_MTYPE 1
 #define CHECK_MTYPE 2
 #define BOOK_MTYPE 3
 
+// descripteur de la file de message.
 int msqid;
+// descripteurs des mutexes (semaphores) pour la synchronisation 
+// sur le tableau des spectacles: architecture lecteurs/écrivains.
+int mutexNbCheckersId, mutexBookId;
 
+// Nombre de lecteurs.
+int nbCheckers;
+
+// Operations sur semaphore d'indice showIdx de l'ensemble semid.
+void semopV(int semid, int showIdx); // Operation V
+void SemopP(int semid, int showIdx); // Operation P
 
 // Signal handler pour sigint
 void sigintHandler(int _);
 
-// Fonction associés aux différent services
+// Fonctions associés aux différent services
 void runInitService(); // initialisation: affichage listes spectacles
 void runCheckingService(); // consultation du nombre de places
 void runBookingService(); // réservation de places pour un spectacle
@@ -39,6 +52,13 @@ int main() {
     // Céation de la file de messages.
     msqid = msgget(MSQKEY, ipcFlag);
     printf("Message queue created!\n");
+
+    // Création des mutexes: 1 de chaques par entrée du tableau (NB_SHOWS)
+    mutexNbCheckersId = semget(SEMKEY1, NB_SHOWS, ipcFlag);
+    mutexBookId = semget(SEMKEY2, NB_SHOWS, ipcFlag);
+    // Initialisation des mutexes (max nb_token = 1)
+    semctl(mutexNbCheckersId, 0, SETALL, 1);
+    semctl(mutexBookId, 0, SETALL, 1);
 
     // On redéfinit l'action du sigint: détruire proprement la file de message
     signal(SIGINT, sigintHandler);
@@ -61,10 +81,51 @@ int main() {
 
 
 void sigintHandler(int _){
-    //Destruction de la file de message.
+    // Destruction de la file de message.
     msgctl(msqid, IPC_RMID, NULL);
+    // Destruction des semaphores/mutexes.
+    semctl(mutexBookId, 0, IPC_RMID, 0);
+    semctl(mutexNbCheckersId, 0, IPC_RMID, 0);
     exit(0);
 }
+
+void semopP(int semid, int showIdx) {
+    struct sembuf operation;
+    operation.sem_num = showIdx - 1;
+    operation.sem_op = -1;
+    operation.sem_flg = 0;
+    semop(semid, &operation, 1);
+}
+
+void semopV(int semid, int showIdx) {
+    struct sembuf operation;
+    operation.sem_num = showIdx - 1;
+    operation.sem_op = 1;
+    operation.sem_flg = 0;
+    semop(semid, &operation, 1);
+}
+
+
+int checkShowSync(int showIdx) {
+    semopP(mutexNbCheckersId, showIdx);
+    nbCheckers++;
+    if (nbCheckers == 1) semopP(mutexBookId, showIdx);
+    semopV(mutexNbCheckersId, showIdx);
+    int nbPlace = checkShow(showIdx);
+    semopP(mutexNbCheckersId, showIdx);
+    nbCheckers--;
+    if (nbCheckers == 0) semopV(mutexBookId, showIdx);
+    semopV(mutexNbCheckersId, showIdx);
+    return nbPlace;
+}
+
+int bookShowSync(int showIdx, int nbPlace) {
+    semopP(mutexBookId, showIdx);
+    int result = bookShow(showIdx, nbPlace);
+    semopV(mutexBookId, showIdx);
+    return result;
+}
+
 
 void runInitService() {
     Response response;
@@ -106,7 +167,7 @@ void runCheckingService(){
         printf("Client %d request to see remaining place for a show.\n", request.clientPid);
 
         // Récupération du nombre de place.
-        int nbPlace = checkShow(request.showIdx);
+        int nbPlace = checkShowSync(request.showIdx);
 
         // Nettoyage du buffer de réponse
         memset(response.message, 0, sizeof(response.message));
@@ -143,7 +204,7 @@ void runBookingService(){
         printf("Client %d request to book places for a show.\n", request.clientPid);
 
         // Appel à la fonction de réservation.
-        int result = bookShow(request.showIdx, request.nbPlace);
+        int result = bookShowSync(request.showIdx, request.nbPlace);
 
         // Nettoyage du buffer de réponse
         memset(response.message, 0, sizeof(response.message));
@@ -157,7 +218,7 @@ void runBookingService(){
             // Préparation du message d'erreur
             snprintf(response.message, sizeof(response.message),
                 "ERROR: Not enough remaining places. Remaining: %d, requested: %d.\n",
-                checkShow(request.showIdx), request.nbPlace);
+                checkShowSync(request.showIdx), request.nbPlace);
             response.rtype = ERROR;
             printf("Not enough places error, sending error message to client.\n");
         } else { // Le spectacle existe et le nombre de places est suffisant
