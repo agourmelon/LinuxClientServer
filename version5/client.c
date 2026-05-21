@@ -13,6 +13,22 @@
 // Signal handler pour sigint
 void sigintHandler(int _);
 
+// Parse status code and copy the rest of the server reply into msg.
+// Returns the status code, or -1 on parse failure.
+static int parseResponse(const char *buffer, char *msg, size_t msgSize) {
+    int statusCode;
+    if (sscanf(buffer, "%d", &statusCode) != 1) return -1;
+    const char *rest = strchr(buffer, ' ');
+    if (rest && msg && msgSize > 0) {
+        strncpy(msg, rest + 1, msgSize - 1);
+        msg[msgSize - 1] = '\0';
+        size_t len = strlen(msg);
+        while (len > 0 && (msg[len-1] == '\n' || msg[len-1] == '\r'))
+            msg[--len] = '\0';
+    }
+    return statusCode;
+}
+
 int clientSockFd;
 
 
@@ -20,7 +36,6 @@ int main() {
     // Initialisation des variables
     struct addrinfo hints, *serverInfo;
     int showIdx, nbPlace;
-    Response response;
     char showIdxMap[BUFFER_SIZE];
     int requestNb, statusCode;
     char recvBuffer[BUFFER_SIZE];
@@ -63,7 +78,7 @@ int main() {
             exit(1);
     }
 
-    sscanf(recvBuffer, "%d %[^\n]", &statusCode, showIdxMap);
+    statusCode = parseResponse(recvBuffer, showIdxMap, sizeof(showIdxMap));
 
     while (1) {
         printf("Here is the list of available shows.\n");
@@ -102,7 +117,7 @@ int main() {
                 exit(1);
             }
 
-            sscanf(recvBuffer, "%d %s", &statusCode, msg);
+            statusCode = parseResponse(recvBuffer, msg, msgSize);
             if (statusCode == SUCCESS)
             printf("Remaining places: %s\n\n", msg);
             else printf("%s\n", msg);
@@ -129,7 +144,7 @@ int main() {
                 exit(1);
             }
 
-            sscanf(recvBuffer, "%d %s", &statusCode, msg);
+            statusCode = parseResponse(recvBuffer, msg, msgSize);
             if (statusCode == SUCCESS)
             printf("Server response: %s\n\n", msg);
             else printf("%s\n", msg);
@@ -151,7 +166,7 @@ int main() {
                 fprintf(stderr, "RECV FROM CLIENT FAILURE\n");
                 exit(1);
             }
-            sscanf(recvBuffer, "%d %s", &statusCode, msg);
+            statusCode = parseResponse(recvBuffer, msg, msgSize);
             if (statusCode == SUCCESS) {
                 printf("Server response: %s\n\n", msg);
                 break;
