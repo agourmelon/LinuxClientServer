@@ -1,13 +1,12 @@
 #pragma once
 #include <unistd.h>
 
-
 enum ResponseType {
     SUCCESS,
     ERROR,
 };
 
-typedef struct Request {
+typedef struct {
     long mtype;
     unsigned int showIdx;
     unsigned int nbPlace;

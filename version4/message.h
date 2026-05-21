@@ -6,7 +6,7 @@ enum ResponseType {
     ERROR,
 };
 
-typedef struct Request {
+typedef struct {
     long mtype;
     unsigned int showIdx;
     unsigned int nbPlace;
@@ -14,7 +14,7 @@ typedef struct Request {
 } Request;
 
 
-typedef struct Response{
+typedef struct {
     long mtype;
     enum ResponseType rtype;
     char message[1024];
