@@ -13,18 +13,18 @@ enum ResponseType {
 };
 
 typedef struct Request {
-    long mtype;
-    enum RequestType rtype;
-    unsigned int showIdx;
-    unsigned int nbPlace;
-    pid_t clientPid;
+    long mtype;              // type de message MSQ : SERVER_MTYPE pour cibler le serveur
+    enum RequestType rtype;  // type de requête (INIT/CHECK/BOOK)
+    unsigned int showIdx;    // indice du spectacle (1-indexé, utilisé pour CHECK et BOOK)
+    unsigned int nbPlace;    // nombre de places demandées (utilisé pour BOOK uniquement)
+    pid_t clientPid;         // PID du client : le serveur s'en sert pour router la réponse
 } Request;
 
 
 typedef struct Response{
-    long mtype;
-    enum ResponseType rtype;
-    char message[1024];
+    long mtype;              // PID du client destinataire, positionné par le serveur
+    enum ResponseType rtype; // statut de la réponse (SUCCESS/ERROR)
+    char message[1024];      // contenu textuel de la réponse
 } Response;
 
 

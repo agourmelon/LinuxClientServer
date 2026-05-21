@@ -10,10 +10,12 @@
 // sur le tableau des spectacles: architecture lecteurs/écrivains.
 static int mutexNbCheckersId, mutexBookId;
 
-// Pointers to shared memory set by server before fork.
+// Pointeurs vers la mémoire partagée, initialisés par le parent avant le fork().
+// Les processus enfants héritent de ces pointeurs et accèdent ainsi aux mêmes données.
 static ShowBookingInfo *syncShows = NULL;
 static int *syncNbCheckers = NULL;
 
+// Initialise les pointeurs locaux vers les segments de mémoire partagée.
 static void setSyncPointers(ShowBookingInfo *shows, int *nbCheckers) {
     syncShows = shows;
     syncNbCheckers = nbCheckers;
@@ -35,6 +37,7 @@ static void initializeSyncStructures(){
     semctl(mutexBookId, 0, SETALL, vals);
 }
 
+// Opération P (acquire) sur le sémaphore showIdx du groupe semid : décrémente de 1, bloque si valeur == 0.
 static void semopP(int semid, int showIdx) {
     struct sembuf operation;
     operation.sem_num = showIdx - 1;
@@ -43,6 +46,7 @@ static void semopP(int semid, int showIdx) {
     semop(semid, &operation, 1);
 }
 
+// Opération V (release) sur le sémaphore showIdx du groupe semid : incrémente de 1, débloque un éventuel waiter.
 static void semopV(int semid, int showIdx) {
     struct sembuf operation;
     operation.sem_num = showIdx - 1;
@@ -52,24 +56,26 @@ static void semopV(int semid, int showIdx) {
 }
 
 
+// Retourne le nombre de places disponibles pour showIdx avec protection lecteurs/écrivains (plusieurs lecteurs simultanés autorisés).
 static int checkShowSync(int showIdx) {
     // Validation de showIdx
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
 
     semopP(mutexNbCheckersId, showIdx);
     syncNbCheckers[showIdx-1]++;
-    if (syncNbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx);
+    if (syncNbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx); // premier lecteur : bloque les écrivains
     semopV(mutexNbCheckersId, showIdx);
 
     int nbPlace = checkShow(syncShows, showIdx);
 
     semopP(mutexNbCheckersId, showIdx);
     syncNbCheckers[showIdx-1]--;
-    if (syncNbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx);
+    if (syncNbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx); // dernier lecteur : libère les écrivains
     semopV(mutexNbCheckersId, showIdx);
     return nbPlace;
 }
 
+// Réserve nbPlace places pour showIdx sous exclusion mutuelle totale (aucun autre lecteur/écrivain concurrent).
 static int bookShowSync(int showIdx, int nbPlace) {
     // Validation de showIdx
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;

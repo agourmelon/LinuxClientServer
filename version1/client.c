@@ -13,6 +13,9 @@ int main() {
     int showIdx;
     int nbPlace;
 
+    // open() sur un FIFO bloque jusqu'à ce que l'autre extrémité soit ouverte.
+    // Le client et le serveur ouvrent les FIFOs dans le même ordre (client2server puis server2client)
+    // mais avec des modes opposés (écriture/lecture) — même ordre obligatoire pour éviter l'interblocage.
     toServerTubeFd = open("client2server", O_WRONLY);
     fromServerTubeFd = open("server2client", O_RDONLY);
 

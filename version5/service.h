@@ -12,7 +12,9 @@ static const char PARSE_FAILURE_MSG[] = "ERROR: Request failed to be parsed by t
 
 static int parseRequest(char *buffer, Request *req);
 
-// Tampon global pour l'affichage de la liste des spectacles.
+// Tampon global pour la liste des spectacles.
+// Taille BUFFER_SIZE-2 : runService préfixe la réponse avec "%d " (code + espace = 2 octets),
+// la liste doit donc tenir dans les octets restants du sendBuffer de taille BUFFER_SIZE.
 static char showIdxMap[BUFFER_SIZE - 2];
 const size_t showIdxMapSize = sizeof(showIdxMap);
 

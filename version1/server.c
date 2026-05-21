@@ -30,6 +30,9 @@ int main() {
     signal(SIGINT, sigintHandler);
     signal(SIGPIPE, SIG_IGN); // évite le crash du serveur si le client se déconnecte en cours d'écriture
 
+    // open() sur un FIFO bloque jusqu'à ce que l'autre extrémité soit ouverte.
+    // Le serveur et le client ouvrent les FIFOs dans le même ordre (client2server puis server2client)
+    // mais avec des modes opposés (lecture/écriture) — même ordre obligatoire pour éviter l'interblocage.
     printf("Opening client to server channel\n");
     fromClientTubeFd = open("client2server", O_RDONLY);
     printf("Opening server to client channel\n");

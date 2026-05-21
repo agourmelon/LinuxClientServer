@@ -35,6 +35,7 @@ static void initializeSyncStructures(){
 }
 
 
+// Opération P (acquire) sur le sémaphore showIdx du groupe semid : décrémente de 1, bloque si valeur == 0.
 static void semopP(int semid, int showIdx) {
     struct sembuf operation;
     operation.sem_num = showIdx - 1;
@@ -43,6 +44,7 @@ static void semopP(int semid, int showIdx) {
     semop(semid, &operation, 1);
 }
 
+// Opération V (release) sur le sémaphore showIdx du groupe semid : incrémente de 1, débloque un éventuel waiter.
 static void semopV(int semid, int showIdx) {
     struct sembuf operation;
     operation.sem_num = showIdx - 1;
@@ -52,6 +54,7 @@ static void semopV(int semid, int showIdx) {
 }
 
 
+// Retourne le nombre de places disponibles pour showIdx avec protection lecteurs/écrivains (plusieurs lecteurs simultanés autorisés).
 static int checkShowSync(int showIdx) {
     // Validation de showIdx
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
@@ -70,6 +73,7 @@ static int checkShowSync(int showIdx) {
     return nbPlace;
 }
 
+// Réserve nbPlace places pour showIdx sous exclusion mutuelle totale (aucun autre lecteur/écrivain concurrent).
 static int bookShowSync(int showIdx, int nbPlace) {
     // Validation de showIdx
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;

@@ -106,6 +106,8 @@ int main() {
     return 0;
 }
 
+// Alloue un segment de mémoire partagée pour le tableau des spectacles,
+// y copie les données initiales et retourne le pointeur attaché.
 ShowBookingInfo *initShowsMemory() {
     shmid = shmget(SHMKEY, NB_SHOWS * sizeof(ShowBookingInfo), IPC_CREAT | 0666);
     ShowBookingInfo *shows = shmat(shmid, NULL, 0);
@@ -113,6 +115,8 @@ ShowBookingInfo *initShowsMemory() {
     return shows;
 }
 
+// Alloue un segment de mémoire partagée pour le compteur de lecteurs par spectacle,
+// initialise tous les compteurs à 0 et retourne le pointeur attaché.
 int *initNbCheckersMemory() {
     shmidNbr = shmget(SHMKEY_NBR, NB_SHOWS * sizeof(int), IPC_CREAT | 0666);
     int *nbCheckers = shmat(shmidNbr, NULL, 0);
@@ -120,6 +124,7 @@ int *initNbCheckersMemory() {
     return nbCheckers;
 }
 
+// Libère toutes les ressources IPC : socket d'écoute, segments de mémoire partagée et sémaphores.
 void safeCloseServer() {
     close(listenSockFd);
     shmdt(sharedShows);
