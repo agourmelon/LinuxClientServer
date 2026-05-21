@@ -28,7 +28,7 @@ int main() {
     mkfifo("server2client", mode);
 
     signal(SIGINT, sigintHandler);
-    signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN); // évite le crash du serveur si le client se déconnecte en cours d'écriture
 
     printf("Opening client to server channel\n");
     fromClientTubeFd = open("client2server", O_RDONLY);
@@ -48,7 +48,7 @@ int main() {
 
         if (strcmp(msgBuffer, "1") == 0) {
             printf("Client request to see remaining place for a show.\n");
-            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1);
+            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1); // ACK : signale au client que le serveur est prêt à recevoir les paramètres
 
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);
@@ -65,7 +65,7 @@ int main() {
 
         } else if (strcmp(msgBuffer, "2") == 0) {
             printf("Client request to book places for a show.\n");
-            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1);
+            write(toClientTubeFd, msgBuffer, strlen(msgBuffer) + 1); // ACK : signale au client que le serveur est prêt à recevoir les paramètres
 
             memset(msgBuffer, 0, sizeof(msgBuffer));
             read(fromClientTubeFd, msgBuffer, sizeof(msgBuffer) - 1);

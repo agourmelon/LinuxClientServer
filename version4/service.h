@@ -27,7 +27,7 @@ static void *runInitService(void* args) {
         pthread_t worker;
         pthread_create(&worker, NULL, runInitWorker, &request);
 
-        // Le worker continue sa tache en asynchrone.
+        // détaché : le worker libère ses ressources seul à la fin, aucun join nécessaire
         pthread_detach(worker);
     }
 }
@@ -51,7 +51,7 @@ static void *runCheckingService(void* args){
         pthread_t worker;
         pthread_create(&worker, NULL, runCheckingWorker, &request);
 
-        // Le worker continue sa tache en asynchrone.
+        // détaché : le worker libère ses ressources seul à la fin, aucun join nécessaire
         pthread_detach(worker);
     }
 }
@@ -74,7 +74,7 @@ static void *runBookingService(void* args){
         pthread_t worker;
         pthread_create(&worker, NULL, runBookingWorker, &request);
 
-        // Le worker continue sa tache en asynchrone.
+        // détaché : le worker libère ses ressources seul à la fin, aucun join nécessaire
         pthread_detach(worker);
     }
 }

@@ -21,5 +21,6 @@ typedef struct {
 } Response;
 
 
+// msgsnd/msgrcv exigent la taille du message sans le champ mtype (premier membre)
 static long requestSize = sizeof(Request) - sizeof(long);
 static long responseSize = sizeof(Response) - sizeof(long);

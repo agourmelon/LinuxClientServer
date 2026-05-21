@@ -18,7 +18,7 @@ static ShowBookingInfo SHOWS[] = {
 const size_t NB_SHOWS = sizeof(SHOWS) / sizeof(ShowBookingInfo);
 
 static int bookShow(size_t index, unsigned int nbPlace) {
-    index-=1;
+    index-=1; // API 1-indexée → tableau 0-indexé; index=0 déborde à SIZE_MAX ≥ NB_SHOWS → -1
     if (index >= NB_SHOWS) return -1;
     if (nbPlace > (unsigned int)SHOWS[index].remainingPlace) return -2;
     SHOWS[index].remainingPlace -= nbPlace;

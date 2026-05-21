@@ -3,7 +3,9 @@
 #include <string.h>
 #include <sys/sem.h>
 #include "booking.h"
-#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.30)
+// const size_t de booking.h n'est pas une constante de compilation en C;
+// la macro est nécessaire pour semget() (nb semaphores) et les tableaux de taille fixe.
+#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo)
 #define SEMKEY1 18
 #define SEMKEY2 19
 
@@ -56,14 +58,14 @@ static int checkShowSync(int showIdx) {
 
     semopP(mutexNbCheckersId, showIdx);
     nbCheckers[showIdx-1]++;
-    if (nbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx);
+    if (nbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx); // premier lecteur : bloque les écrivains
     semopV(mutexNbCheckersId, showIdx);
 
     int nbPlace = checkShow(showIdx);
 
     semopP(mutexNbCheckersId, showIdx);
     nbCheckers[showIdx-1]--;
-    if (nbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx);
+    if (nbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx); // dernier lecteur : libère les écrivains
     semopV(mutexNbCheckersId, showIdx);
     return nbPlace;
 }

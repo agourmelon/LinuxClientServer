@@ -74,7 +74,7 @@ int main() {
     printf("Socket %d ready to listen \n", listenSockFd);
 
     signal(SIGINT, sigintHandler);
-    signal(SIGCHLD, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN); // évite les processus zombies sans avoir à faire wait() sur chaque enfant
 
     printf("Booking server is launched...\n");
 
@@ -131,7 +131,7 @@ void safeCloseServer() {
 }
 
 void sigintHandler(int _) {
-    if (getpid() == parentPid) {
+    if (getpid() == parentPid) { // seul le parent détruit les ressources IPC partagées; les enfants se contentent de se détacher
         safeCloseServer();
     } else {
         close(serviceSockFd);

@@ -109,7 +109,7 @@ int main() {
             break;
         }
 
-        // On récupère le pid du client de sa requête pour indiquer le destinataire
+        // mtype = pid du client : route la réponse vers la boîte privée du bon client
         response.mtype = request.clientPid;
         // Envoie du message
         msgsnd(msqid, &response, responseSize, 0);
