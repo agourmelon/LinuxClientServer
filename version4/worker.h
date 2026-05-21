@@ -101,7 +101,7 @@ static void *runBookingWorker(void* req){
         // Préparation du message d'erreur
         snprintf(response.message, sizeof(response.message),
             "ERROR: Not enough remaining places. Remaining: %d, requestPtr->d: %d.\n",
-            checkShow(requestPtr->showIdx), requestPtr->nbPlace);
+            checkShowSync(requestPtr->showIdx), requestPtr->nbPlace);
         response.rtype = ERROR;
         printf("Not enough places error, sending error message to client.\n");
     } else { // Le spectacle existe et le nombre de places est suffisant
