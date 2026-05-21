@@ -14,7 +14,7 @@ typedef struct {
 } Request;
 
 
-typedef struct Response{
+typedef struct {
     long mtype;
     enum ResponseType rtype;
     char message[1024];

@@ -51,8 +51,8 @@ int main() {
 
         // Demande de l'action souhaitée
         printf("What is your request?\n 1. Get remaining places for a show.\n 2. Book places for a show.\n --> ");
-        fflush(stdout);                                        // FIX: forcer l'affichage avant scanf
-        scanf("%d", &requestNb);                              // FIX: pas de texte littéral dans scanf
+        fflush(stdout);
+        scanf("%d", &requestNb);
 
         // Requête de consultation
         if (requestNb == 1) { 
