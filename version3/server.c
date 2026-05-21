@@ -39,6 +39,9 @@ int main() {
     //Destruction de la file de message.
     msgctl(msqid, IPC_RMID, NULL);
 
+    // Destruction des semaphores/mutexes.
+    semctl(mutexBookId, 0, IPC_RMID, 0);
+    semctl(mutexNbCheckersId, 0, IPC_RMID, 0);
     return 0;
 }
 
