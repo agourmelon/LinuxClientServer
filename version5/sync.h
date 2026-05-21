@@ -2,26 +2,28 @@
 
 #include <string.h>
 #include <sys/sem.h>
-#include "../booking.h"
-#define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.30)
+#include "booking.h"
 #define SEMKEY1 18
 #define SEMKEY2 19
 
-// descripteurs des mutexes (semaphores) pour la synchronisation 
+// descripteurs des mutexes (semaphores) pour la synchronisation
 // sur le tableau des spectacles: architecture lecteurs/écrivains.
 static int mutexNbCheckersId, mutexBookId;
 
-// Nombre de lecteurs.
-static int nbCheckers[NB_SHOWS];
+// Pointers to shared memory set by server before fork.
+static ShowBookingInfo *syncShows = NULL;
+static int *syncNbCheckers = NULL;
+
+static void setSyncPointers(ShowBookingInfo *shows, int *nbCheckers) {
+    syncShows = shows;
+    syncNbCheckers = nbCheckers;
+}
 
 // flag pour la création des semaphores/mutexes.
 static mode_t semFlag = IPC_CREAT | IPC_EXCL | 0666;
 
 
 static void initializeSyncStructures(){
-    // initialisation des nombres de lecteurs à 0.
-    memset(nbCheckers, 0, NB_SHOWS * sizeof(int));
-
     // Création des mutexes: 1 de chaques par entrée du tableau (NB_SHOWS)
     mutexNbCheckersId = semget(SEMKEY1, NB_SHOWS, semFlag);
     mutexBookId = semget(SEMKEY2, NB_SHOWS, semFlag);
@@ -32,7 +34,7 @@ static void initializeSyncStructures(){
     semctl(mutexNbCheckersId, 0, SETALL, vals);
     semctl(mutexBookId, 0, SETALL, vals);
 }
-    
+
 static void semopP(int semid, int showIdx) {
     struct sembuf operation;
     operation.sem_num = showIdx - 1;
@@ -55,15 +57,15 @@ static int checkShowSync(int showIdx) {
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
 
     semopP(mutexNbCheckersId, showIdx);
-    nbCheckers[showIdx-1]++;
-    if (nbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx);
+    syncNbCheckers[showIdx-1]++;
+    if (syncNbCheckers[showIdx-1] == 1) semopP(mutexBookId, showIdx);
     semopV(mutexNbCheckersId, showIdx);
 
-    int nbPlace = checkShow(showIdx);
+    int nbPlace = checkShow(syncShows, showIdx);
 
     semopP(mutexNbCheckersId, showIdx);
-    nbCheckers[showIdx-1]--;
-    if (nbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx);
+    syncNbCheckers[showIdx-1]--;
+    if (syncNbCheckers[showIdx-1] == 0) semopV(mutexBookId, showIdx);
     semopV(mutexNbCheckersId, showIdx);
     return nbPlace;
 }
@@ -73,8 +75,7 @@ static int bookShowSync(int showIdx, int nbPlace) {
     if (showIdx <=0 || (long unsigned int)showIdx > NB_SHOWS) return -1;
 
     semopP(mutexBookId, showIdx);
-    int result = bookShow(showIdx, nbPlace);
+    int result = bookShow(syncShows, showIdx, nbPlace);
     semopV(mutexBookId, showIdx);
     return result;
 }
-

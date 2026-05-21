@@ -1,32 +1,24 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <netdb.h>
 #include "message.h"
 #define BUFFER_SIZE 1024
 #define SERVER "127.0.0.1"
 #define PORTS "2058"
-#define PORTC "4096"
 
 // Signal handler pour sigint
 void sigintHandler(int _);
-
-int parseResponse(char *buffer, Response *rep); 
 
 int clientSockFd;
 
 
 int main() {
     // Initialisation des variables
-    struct addrinfo hints, *clientInfo, *serverInfo;
+    struct addrinfo hints, *serverInfo;
     int showIdx, nbPlace;
     Response response;
     char showIdxMap[BUFFER_SIZE];
@@ -42,33 +34,21 @@ int main() {
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    if (getaddrinfo(NULL, PORTC, &hints, &clientInfo) == -1) {
-        fprintf(stderr, "LOCAL GETADDRINFO FAILURE \n");
-        exit(1);
-    }
-
-    clientSockFd = socket(clientInfo->ai_family, clientInfo->ai_socktype, clientInfo->ai_protocol);
-    if (clientSockFd == -1) {
-        fprintf(stderr, "SOCKET CREATION FAILURE \n");
-        exit(1);
-    }
-    if (bind(clientSockFd, clientInfo->ai_addr, clientInfo->ai_addrlen) == -1) {
-        fprintf(stderr, "SOCKET BINDING FAILURE \n");
-        exit(1);
-    }
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
     if (getaddrinfo(SERVER, PORTS, &hints, &serverInfo) == -1) {
         fprintf(stderr, "REMOTE GETADDRINFO FAILURE \n");
+        exit(1);
+    }
+
+    clientSockFd = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+    if (clientSockFd == -1) {
+        fprintf(stderr, "SOCKET CREATION FAILURE \n");
         exit(1);
     }
     if (connect(clientSockFd, serverInfo->ai_addr, serverInfo->ai_addrlen) == -1){
         fprintf(stderr, "CONNECT TO SERVER FAILURE \n");
         exit(1);
     }
+    freeaddrinfo(serverInfo);
 
     signal(SIGINT, sigintHandler);
 
@@ -83,7 +63,7 @@ int main() {
             exit(1);
     }
 
-    sscanf(recvBuffer, "%d %s", &statusCode, showIdxMap);
+    sscanf(recvBuffer, "%d %[^\n]", &statusCode, showIdxMap);
 
     while (1) {
         printf("Here is the list of available shows.\n");
@@ -100,7 +80,7 @@ int main() {
         scanf("%d", &requestNb);
 
         // Requête de consultation
-        if (requestNb == 1) { 
+        if (requestNb == 1) {
 
             // Choix du spectacle (via son indice)
             printf("Enter show index to see remaining places: ");
@@ -135,7 +115,7 @@ int main() {
             scanf("%d %d", &showIdx, &nbPlace);
 
             // Préparation de la requête
-            snprintf(sendBuffer, sendBufferSize, "%d %d %d", CHECK, showIdx, nbPlace);
+            snprintf(sendBuffer, sendBufferSize, "%d %d %d", BOOK, showIdx, nbPlace);
 
             // Envoie de la requête
             if (send(clientSockFd, sendBuffer, sendBufferSize, 0) == -1) {
@@ -177,7 +157,7 @@ int main() {
                 break;
             }
             else printf("%s\n", msg);
-            
+
         } else {
             printf("Unknown request: %d\n\n", requestNb);
         }

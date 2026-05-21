@@ -80,13 +80,13 @@ static void runService(int serviceSockFd, struct sockaddr *clientAddr) {
             } else if (result==-2) { // Si pas assez de places disponibles:
                 // Préparation du message d'erreur
                 snprintf(sendBuffer, sendBufferSize,
-                    "%d Not enough remaining places. Remaining: %d, requestPtr->d: %d.\n",
+                    "%d Not enough remaining places. Remaining: %d, requested: %d.\n",
                     ERROR, checkShowSync(request.showIdx), request.nbPlace);
                 printf("Not enough places error, sending error message to client.\n");
             } else { // Le spectacle existe et le nombre de places est suffisant
                 // Préparation du message de confirmation.
                 snprintf(sendBuffer, sendBufferSize,
-                    "%d %d places booked for %s", SUCCESS, result, SHOWS[request.showIdx - 1].title);
+                    "%d %d places booked for %s", SUCCESS, result, SHOWS_INIT[request.showIdx - 1].title);
                 printf("Booking request of Client %s succeeded!\n", clientAddr->sa_data);
             }
         }

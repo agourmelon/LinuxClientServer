@@ -6,7 +6,8 @@
 #include <unistd.h>
 #include "service.h"
 #include "sync.h"
-#define SHMKEY 256
+#define SHMKEY     256
+#define SHMKEY_NBR 257
 #define PORTS "2058"
 #define MAXCLIENT 10
 
@@ -20,13 +21,16 @@ void safeCloseServer();
 mode_t msqFlag = IPC_CREAT | IPC_EXCL | 0666;
 
 // Préparation du segment de mémoire partagé
-ShowBookingInfo *initSharedMemory();
+ShowBookingInfo *initShowsMemory();
+int             *initNbCheckersMemory();
 
 ShowBookingInfo *sharedShows;
+int             *sharedNbCheckers;
 
 pid_t parentPid;
 
 int shmid;
+int shmidNbr;
 
 int listenSockFd, serviceSockFd;
 
@@ -36,10 +40,14 @@ int main() {
     socklen_t clientAddrSize = sizeof(clientAddr);
     pid_t newPid;
 
-    ShowBookingInfo *sharedShows = initSharedMemory();
+    sharedShows      = initShowsMemory();
+    sharedNbCheckers = initNbCheckersMemory();
 
     initializeSyncStructures();
-    
+    setSyncPointers(sharedShows, sharedNbCheckers);
+
+    parentPid = getpid();
+
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -58,6 +66,7 @@ int main() {
         fprintf(stderr, "LISTENER SOCKET BINDING FAILURE \n");
         exit(1);
     }
+    freeaddrinfo(serverInfo);
     if (listen(listenSockFd, MAXCLIENT) == -1){
         fprintf(stderr, "LISTENER SOCKET LISTEN FAILURE \n");
         exit(1);
@@ -67,10 +76,9 @@ int main() {
     signal(SIGINT, sigintHandler);
     signal(SIGCHLD, SIG_IGN);
 
-    // Message de lancement du server.
     printf("Booking server is launched...\n");
 
-    printShowIndexMap(showIdxMap, showIdxMapSize);
+    printShowIndexMap(sharedShows, showIdxMap, showIdxMapSize);
 
     while (1) {
         serviceSockFd = accept(listenSockFd, &clientAddr, &clientAddrSize);
@@ -84,7 +92,9 @@ int main() {
             close(listenSockFd);
             runService(serviceSockFd, &clientAddr);
             shmdt(sharedShows);
+            shmdt(sharedNbCheckers);
             close(serviceSockFd);
+            exit(0);
         }
         else {
             printf("Client at address %s, handle by worker %d.\n", clientAddr.sa_data, newPid);
@@ -96,23 +106,26 @@ int main() {
     return 0;
 }
 
-ShowBookingInfo *initSharedMemory() {
-    // Créer le segment
-    int shmid = shmget(SHMKEY, NB_SHOWS * sizeof(ShowBookingInfo), IPC_CREAT | 0666);
-    
-    // Attacher le segment
+ShowBookingInfo *initShowsMemory() {
+    shmid = shmget(SHMKEY, NB_SHOWS * sizeof(ShowBookingInfo), IPC_CREAT | 0666);
     ShowBookingInfo *shows = shmat(shmid, NULL, 0);
-    
-    // Initialiser avec les données de SHOWS
-    memcpy(shows, SHOWS, NB_SHOWS * sizeof(ShowBookingInfo));
-    
+    memcpy(shows, SHOWS_INIT, NB_SHOWS * sizeof(ShowBookingInfo));
     return shows;
+}
+
+int *initNbCheckersMemory() {
+    shmidNbr = shmget(SHMKEY_NBR, NB_SHOWS * sizeof(int), IPC_CREAT | 0666);
+    int *nbCheckers = shmat(shmidNbr, NULL, 0);
+    memset(nbCheckers, 0, NB_SHOWS * sizeof(int));
+    return nbCheckers;
 }
 
 void safeCloseServer() {
     close(listenSockFd);
     shmdt(sharedShows);
     shmctl(shmid, IPC_RMID, NULL);
+    shmdt(sharedNbCheckers);
+    shmctl(shmidNbr, IPC_RMID, NULL);
     semctl(mutexBookId, 0, IPC_RMID, 0);
     semctl(mutexNbCheckersId, 0, IPC_RMID, 0);
 }
@@ -123,7 +136,7 @@ void sigintHandler(int _) {
     } else {
         close(serviceSockFd);
         shmdt(sharedShows);
+        shmdt(sharedNbCheckers);
     }
     exit(0);
 }
-
