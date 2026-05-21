@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include <sys/sem.h>
-#include "../booking.h"
+#include "booking.h"
 #define NB_SHOWS sizeof(SHOWS) / sizeof(ShowBookingInfo) // Forcer NB_SHOWS comme valeur constante (sinon erreur compilation l.30)
 #define SEMKEY1 18
 #define SEMKEY2 19

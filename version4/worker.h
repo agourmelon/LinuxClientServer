@@ -7,7 +7,7 @@
 #include <sys/msg.h>
 #include "message.h"
 #include "sync.h"
-#include "../booking.h"
+#include "booking.h"
 
 // descripteur de la file de message.
 static int msqid;
@@ -100,7 +100,7 @@ static void *runBookingWorker(void* req){
     } else if (result==-2) { // Si pas assez de places disponibles:
         // Préparation du message d'erreur
         snprintf(response.message, sizeof(response.message),
-            "ERROR: Not enough remaining places. Remaining: %d, requestPtr->d: %d.\n",
+            "ERROR: Not enough remaining places. Remaining: %d, requested: %d.\n",
             checkShowSync(requestPtr->showIdx), requestPtr->nbPlace);
         response.rtype = ERROR;
         printf("Not enough places error, sending error message to client.\n");

@@ -1,11 +1,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "../booking.h"
+#include "booking.h"
 
+void sigintHandler(int _) {
+    unlink("client2server");
+    unlink("server2client");
+    exit(0);
+}
 
 int main() {
     char msgBuffer[1024];
@@ -19,6 +26,9 @@ int main() {
 
     mkfifo("client2server", mode);
     mkfifo("server2client", mode);
+
+    signal(SIGINT, sigintHandler);
+    signal(SIGPIPE, SIG_IGN);
 
     printf("Opening client to server channel\n");
     fromClientTubeFd = open("client2server", O_RDONLY);

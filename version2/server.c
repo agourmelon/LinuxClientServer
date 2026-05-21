@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include "message.h"
-#include "../booking.h"
+#include "booking.h"
 #define MSQKEY 17
 #define SERVER_MTYPE 1
 
